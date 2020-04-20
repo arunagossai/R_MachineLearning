@@ -1,0 +1,36 @@
+---
+title: "happiness_project"
+output: html_document
+---
+
+
+```{r happiness, echo=FALSE}
+#LOADING DATA AND DOWNLOADING PACKAGES
+data = read.csv('https://raw.githubusercontent.com/arunagossai/happiness_project_R/master/happiness_data.csv')
+head(data)
+install.packages('fastDummies')
+library(fastDummies)
+
+```
+
+
+```{r happiness, echo=FALSE}
+#VARIABLE CREATION AND PREPROCESSING
+
+continents <- dummy_cols(data$continent,NULL)
+years <- dummy_cols(data$year,NULL)
+data <- data[1:13]
+df  = subset(data, life_ladder!='NA' & gdp != 'NA' & social_support!='NA' &
+                life_expectancy!='NA'& freedom != 'NA' & generosity != 'NA' &
+                corruption != 'NA' & positive_affect != 'NA' &
+                negative_affect != 'NA' )
+dim(df)
+
+```
+
+
+```{r happiness, echo=FALSE}
+
+#correlation matrix
+
+```
