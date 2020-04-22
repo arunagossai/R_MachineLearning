@@ -6,8 +6,11 @@ output: html_document
 
 ```{r happiness, echo=FALSE}
 #LOADING DATA AND DOWNLOADING PACKAGES
+
 data = read.csv('https://raw.githubusercontent.com/arunagossai/happiness_project_R/master/happiness_data.csv')
 head(data)
+summary(data)
+dim(data)
 install.packages('fastDummies')
 library(fastDummies)
 
@@ -17,20 +20,42 @@ library(fastDummies)
 ```{r happiness, echo=FALSE}
 #VARIABLE CREATION AND PREPROCESSING
 
-continents <- dummy_cols(data$continent,NULL)
 years <- dummy_cols(data$year,NULL)
-data <- data[1:13]
-df  = subset(data, life_ladder!='NA' & gdp != 'NA' & social_support!='NA' &
-                life_expectancy!='NA'& freedom != 'NA' & generosity != 'NA' &
-                corruption != 'NA' & positive_affect != 'NA' &
-                negative_affect != 'NA' )
-dim(df)
+#droping the countries that have no data for depedent variables
+df_countries  = subset(data, country != "Kosovo"  & country !="Taiwan" )
+paste( dim(data)[1] - dim(df_countries)[1], "observations lost")
+#droping NAs
+df_NAs = subset(df_countries, democracy != 'NA' & refugee!= 'NA' & gini != 'NA' & child_mortality != 'NA')
+paste( dim(df_countries)[1] - dim(df_NAs)[1], "observations lost")
+#identifying outliers
+plot(data$happiness,data$democracy)
+plot(data$happiness,data$gini)
+plot(data$happiness,data$child_mortality)
+plot(data$happiness,data$sanitation)
+plot(data$happiness,data$women_edu)
+plot(data$happiness,data$men_edu)
+plot(data$happiness,data$gini)
+plot(data$happiness,data$elder_child)
+plot(data$happiness,data$pop_den)
+plot(data$happiness,data$labour)
+#droping outliers (maybe replace with an average?)
+df = subset(df_NAs, pop_den < 5000)
+paste( dim(df_NAs)[1] - dim(df)[1], "observations lost")
 
 ```
 
 
 ```{r happiness, echo=FALSE}
+#DESCRIPTIVE STATS
+
+
+
+
+model = lm(data$happiness~data$happiness)
+abline(model$coefficients[1],model$coefficients[2],col = "blue")
+plot(data$happiness,model$coefficients[2]*data$happiness)
 
 #correlation matrix
+#descriptive stats
 
 ```
