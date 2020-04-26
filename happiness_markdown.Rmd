@@ -7,11 +7,11 @@ output: html_document
 ```{r happiness, echo=FALSE}
 #LOADING DATA AND DOWNLOADING PACKAGES
 
-data = read.csv('https://raw.githubusercontent.com/arunagossai/happiness_project_R/master/happiness_data.csv')
+data = read.csv('https://raw.githubusercontent.com/arunagossai/happiness_project_R/master/happiness_data.csv', header = TRUE)
 head(data)
 summary(data)
 dim(data)
-install.packages('fastDummies')
+#install.packages('fastDummies')
 library(fastDummies)
 
 ```
@@ -20,7 +20,8 @@ library(fastDummies)
 ```{r happiness, echo=FALSE}
 #VARIABLE CREATION AND PREPROCESSING
 
-years <- dummy_cols(data$year,NULL)
+data[data$region=="NA"]<-'NA_OC'
+
 #droping the countries that have no data for depedent variables
 df_countries  = subset(data, country != "Kosovo"  & country !="Taiwan" )
 paste( dim(data)[1] - dim(df_countries)[1], "observations lost")
@@ -28,19 +29,16 @@ paste( dim(data)[1] - dim(df_countries)[1], "observations lost")
 df_NAs = subset(df_countries, democracy != 'NA' & refugee!= 'NA' & gini != 'NA' & child_mortality != 'NA')
 paste( dim(df_countries)[1] - dim(df_NAs)[1], "observations lost")
 #identifying outliers
-plot(data$happiness,data$democracy)
-plot(data$happiness,data$gini)
-plot(data$happiness,data$child_mortality)
-plot(data$happiness,data$sanitation)
-plot(data$happiness,data$women_edu)
-plot(data$happiness,data$men_edu)
-plot(data$happiness,data$gini)
-plot(data$happiness,data$elder_child)
-plot(data$happiness,data$pop_den)
-plot(data$happiness,data$labour)
+pairs(df_NAs[5:10])
+pairs(df_NAs[11:15])
+plot(df_NAs$happiness,df_NAs$refugee) #isnt a share supposed to be a percentage?
+plot(df_NAs$happiness,df_NAs$pop_den)
 #droping outliers (maybe replace with an average?)
-df = subset(df_NAs, pop_den < 5000)
+df = subset(df_NAs, pop_den < 5000 & refugee < 1)
 paste( dim(df_NAs)[1] - dim(df)[1], "observations lost")
+#dummy variables
+head(df)
+df_dum <- dummy_cols(df, select_columns = "region")
 
 ```
 
@@ -48,14 +46,15 @@ paste( dim(df_NAs)[1] - dim(df)[1], "observations lost")
 ```{r happiness, echo=FALSE}
 #DESCRIPTIVE STATS
 
+summary(df_dum)
+#selecting only features - the regions and year for corrl matrix
+cor(df_dum[,6:15]) 
+#serious issues with multicollinearity: sanitation, women_edu, men_edu
 
 
 
-model = lm(data$happiness~data$happiness)
-abline(model$coefficients[1],model$coefficients[2],col = "blue")
-plot(data$happiness,model$coefficients[2]*data$happiness)
+summary(lm(happiness~.-country,df))
 
-#correlation matrix
-#descriptive stats
+
 
 ```
