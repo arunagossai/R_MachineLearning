@@ -11,50 +11,51 @@ data = read.csv('https://raw.githubusercontent.com/arunagossai/happiness_project
 head(data)
 summary(data)
 dim(data)
-#install.packages('fastDummies')
+install.packages('fastDummies')
+install.packages('qdapTools')
 library(fastDummies)
-
+library(qdapTools)
 ```
 
 
 ```{r happiness, echo=FALSE}
 #VARIABLE CREATION AND PREPROCESSING
 
-data[data$region=="NA"]<-'NA_OC'
+#Creating a key for the regions, will use later
+regionkey = levels(data$region)
+regionvalues = c(1:10)
+key = data.frame(regionkey,regionvalues)
 
-#droping the countries that have no data for depedent variables
-df_countries  = subset(data, country != "Kosovo"  & country !="Taiwan" )
-paste( dim(data)[1] - dim(df_countries)[1], "observations lost")
-#droping NAs
-df_NAs = subset(df_countries, democracy != 'NA' & refugee!= 'NA' & gini != 'NA' & child_mortality != 'NA')
-paste( dim(df_countries)[1] - dim(df_NAs)[1], "observations lost")
-#identifying outliers
-pairs(df_NAs[5:10])
-pairs(df_NAs[11:15])
-plot(df_NAs$happiness,df_NAs$refugee) #isnt a share supposed to be a percentage?
-plot(df_NAs$happiness,df_NAs$pop_den)
-#droping outliers (maybe replace with an average?)
-df = subset(df_NAs, pop_den < 5000 & refugee < 1)
-paste( dim(df_NAs)[1] - dim(df)[1], "observations lost")
-#dummy variables
+#Changing the region from categorical to numeric
+data$region <- as.numeric(data$region)
+
+#Change getting rid of countries with no observations, and countries with no democracy value
+df1  = subset(data, country != "Kosovo"  & country !="Taiwan" & country!="Sudan" & democracy!= 'NA')
+paste( dim(data)[1] - dim(df1)[1], "observations lost")
+
+#Taking the mean of each column by country. Changes dataset from pooled cross-sectional to cross-sectional 
+df2 <- aggregate.data.frame(df1[-2], by = list(df1$country), mean)
+paste( dim(df1)[1] - dim(df2)[1], "observations lost")
+
+#adding a column for the region name
+rname = lookup(df2$region,key$regionvalues,key$regionkey)
+df = data.frame(df2,rname)
+
+#Creating dummy variables from the region name
+df_dum <- dummy_cols(df, select_columns = "rname")
+
+
+###NOTE####
+#we now have two datasets. One has a column for region as a dummy variable, one does not. you can view them with the code below. Please remember that we have decided NOT to get rid of the  countries with outliers. Your two options are: replacing outliers with NAs or keeping them as is
+
 head(df)
-df_dum <- dummy_cols(df, select_columns = "region")
-
+head(df_dum)
 ```
+
 
 
 ```{r happiness, echo=FALSE}
-#DESCRIPTIVE STATS
-
-summary(df_dum)
-#selecting only features - the regions and year for corrl matrix
-cor(df_dum[,6:15]) 
-#serious issues with multicollinearity: sanitation, women_edu, men_edu
-
-
-
-summary(lm(happiness~.-country,df))
-
-
+#START YOUR ANALYSIS HERE
 
 ```
+
