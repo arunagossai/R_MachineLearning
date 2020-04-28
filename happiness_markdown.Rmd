@@ -11,11 +11,12 @@ data = read.csv('https://raw.githubusercontent.com/arunagossai/happiness_project
 head(data)
 summary(data)
 dim(data)
-install.packages('fastDummies')
-install.packages('qdapTools')
+#install.packages('fastDummies')
+#install.packages('qdapTools')
 library(fastDummies)
 library(qdapTools)
 ```
+
 
 
 ```{r happiness, echo=FALSE}
@@ -44,6 +45,14 @@ df = data.frame(df2,rname)
 #Creating dummy variables from the region name
 df_dum <- dummy_cols(df, select_columns = "rname")
 
+#testing for multicollinearity excluding regions and year from matrix
+cor(df[6:15])
+#serious issues with multicollinearity, dropping the problem variables
+df$men_edu <- NULL
+df$sanitation <- NULL
+df$child_mortality <- NULL
+df$elder_child <- NULL
+
 
 ###NOTE####
 #we now have two datasets. One has a column for region as a dummy variable, one does not. you can view them with the code below. Please remember that we have decided NOT to get rid of the  countries with outliers. Your two options are: replacing outliers with NAs or keeping them as is
@@ -53,9 +62,10 @@ head(df_dum)
 ```
 
 
-
 ```{r happiness, echo=FALSE}
 #START YOUR ANALYSIS HERE
+
+summary(lm(happiness ~ . -Group.1 -ï..id -year -region, df))
 
 ```
 
