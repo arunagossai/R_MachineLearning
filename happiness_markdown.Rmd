@@ -53,10 +53,18 @@ df$sanitation <- NULL
 df$child_mortality <- NULL
 df$elder_child <- NULL
 
+#dropping variables that are not needed
+df$year <- NULL
+df$ï..id <- NULL
+df$region <- NULL
+df_dum$year <- NULL
+df_dum$ï..id <- NULL
+df_dum$region <- NULL
+df_dum$rname <- NULL
+df_dum$rname_Cen_E_EU <- NULL #getting rid of one dummy variable to prevent multicollinearity
 
 ###NOTE####
 #we now have two datasets. One has a column for region as a dummy variable, one does not. you can view them with the code below. Please remember that we have decided NOT to get rid of the  countries with outliers. Your two options are: replacing outliers with NAs or keeping them as is
-
 head(df)
 head(df_dum)
 ```
