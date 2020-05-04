@@ -4,6 +4,7 @@ output: html_document
 ---
 
 
+
 ```{r happiness, echo=FALSE}
 #LOADING DATA AND DOWNLOADING PACKAGES
 
@@ -13,8 +14,12 @@ summary(data)
 dim(data)
 #install.packages('fastDummies')
 #install.packages('qdapTools')
+#install.packages('glmnet')
+#install.packages('tseries')
+library(tseries)
 library(fastDummies)
 library(qdapTools)
+library(glmnet)
 ```
 
 
@@ -50,8 +55,12 @@ cor(df[6:15])
 #serious issues with multicollinearity, dropping the problem variables
 df$men_edu <- NULL
 df$sanitation <- NULL
-df$child_mortality <- NULL
 df$elder_child <- NULL
+df$child_mortality <- NULL
+df_dum$men_edu <- NULL
+df_dum$sanitation <- NULL
+df_dum$elder_child <- NULL
+df_dum$child_mortality <- NULL
 
 #dropping variables that are not needed
 df$year <- NULL
@@ -60,8 +69,7 @@ df$region <- NULL
 df_dum$year <- NULL
 df_dum$ï..id <- NULL
 df_dum$region <- NULL
-df_dum$rname <- NULL
-df_dum$rname_Cen_E_EU <- NULL #getting rid of one dummy variable to prevent multicollinearity
+df_dum$rname <- NULL  #getting rid of one dummy variable to prevent multicollinearity
 
 ###NOTE####
 #we now have two datasets. One has a column for region as a dummy variable, one does not. you can view them with the code below. Please remember that we have decided NOT to get rid of the  countries with outliers. Your two options are: replacing outliers with NAs or keeping them as is
@@ -70,10 +78,27 @@ head(df_dum)
 ```
 
 
+
 ```{r happiness, echo=FALSE}
-#START YOUR ANALYSIS HERE
+#transforming variables
+df_dum$women_edu <- log(df_dum$women_edu)
+df_dum$pop_den <- log(df_dum$pop_den)
+pairs(df_dum[2:8])
+```
 
-summary(lm(happiness ~ . -Group.1 -ï..id -year -region, df))
 
+
+```{r}
+set.seed(517478)
+n = nrow(df_dum)
+Index = sample(1:n, size = round(0.7*n), replace=FALSE)
+train = df_dum[Index,]
+test = df_dum[-Index,]  
+
+M2 = lm(happiness ~ ., train[2:17])
+pred_base = predict(M2, test[3:17])
+RMSE_BASE = sqrt(sum((pred_base-test$happiness)^2)/length(pred_base))
+RMSE_BASE
+summary(M2)
 ```
 
