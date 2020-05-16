@@ -305,7 +305,7 @@ CONFUSION_OUT_5 = confusionMatrix(table(pred_out_5,test5$veryhappy))
 
 CONFUSION_IN_5
 CONFUSION_OUT_5
-summary(M5)
+t(M5$coefs)%*% M5$SV
 ```
 
 
