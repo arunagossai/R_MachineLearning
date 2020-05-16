@@ -338,7 +338,7 @@ CONFUSION_IN_6
 CONFUSION_OUT_6
 summary(M6)
 cbind(M6$coefficients,confint(M6))
-exp(cbind(M4$coefficients, confint(M4)))
+exp(cbind(M6$coefficients, confint(M6)))
 ```
 
 
