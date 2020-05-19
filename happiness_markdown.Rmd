@@ -11,10 +11,6 @@ data = read.csv('https://raw.githubusercontent.com/arunagossai/happiness_project
 head(data)
 summary(data)
 dim(data)
-#install.packages('fastDummies')
-#install.packages('qdapTools')
-#install.packages('glmnet')
-#install.packages('tseries')
 library(tseries)
 library(fastDummies)
 library(qdapTools)
@@ -72,12 +68,15 @@ df_dum$rname_West_EU<-NULL
 #creating binary 'very happy' variables for classification models
 df_dum$veryhappy <- ifelse(df_dum$happiness >= 6.5,1,0)
 df$veryhappy <- ifelse(df$happiness >= 6.5,1,0)
+
+View(df_dum)
+View(df)
 ```
 
 
 
 ```{r happiness, echo=FALSE}
-#CHECKING VARIABLE CORRELATION AND TRANSFORMATIONS
+#CHECKING VARIABLE RELATIONSHIPS WITH DEPENDENT VARIABLE
 df1 = df_dum
 dim(df1)
 #relationships with independent
@@ -148,8 +147,6 @@ df2$refugee <- log(df2$refugee+1)
 df2$women_edu <- log(df2$women_edu)
 df2$pop_den <- log(df2$pop_den)
 
-set.seed(123)
-Index = sample(1:nrow(df2), size = round(0.7*nrow(df2)), replace=FALSE)
 train2 = df2[Index,]
 test2 = df2[-Index,]  
 
@@ -181,8 +178,9 @@ pred_out_2 = predict(M2, as.matrix(test2[3:17]), s = 'lambda.min')
 RMSE_IN_2 = sqrt(sum((pred_in_2-train2$happiness)^2)/length(pred_in_2))
 RMSE_OUT_2 = sqrt(sum((pred_out_2-test2$happiness)^2)/length(pred_out_2))
 
-c(RMSE_IN_2,RMSE_OUT_2)
-coef(M2, s = 'lambda.min')
+R2 <- M2$glmnet.fit$dev.ratio[which(M2$glmnet.fit$lambda == M2$lambda.min)]
+c(RMSE_IN_2,RMSE_OUT_2,R2)
+cbind(coef(M2, s = 'lambda.min'))
 
 #RESIDUAL ANALYSIS
 plot(pred_out_2-test2$happiness)
@@ -199,7 +197,6 @@ jarque.bera.test(pred_out_2-test2$happiness) #null: normally distributed
 #MODEL 3: YIFAN — LINEAR REGRESSION
 
 #CREATING TRAINING AND TEST SET
-set.seed(123)
 train3 = df_dum[Index,]
 test3 = df_dum[-Index,]  
 
@@ -236,10 +233,8 @@ names(df4)[names(df4)=="rname"]<-"region"
 df4$veryhappy <- factor(df4$veryhappy)
 class(df4$veryhappy)
 
-set.seed(123)
-inTrain <- createDataPartition(y=df4$veryhappy, p=.70, list = FALSE) 
-train4<-df4[inTrain,]  
-test4<-df4[-inTrain,]
+train4<-df4[Index,]
+test4<-df4[-Index,]
 
 #MODEL BUILDING AND VALIDATION
 M4<-glm(veryhappy ~ democracy + gini + refugee + women_edu + pop_den + labour, data = train4, family = "binomial")
@@ -267,8 +262,6 @@ df5 = df_dum
 df5$refugee <- log(df5$refugee+1)
 df5$pop_den <- log(df5$pop_den)
 
-set.seed(123)
-Index = sample(1:nrow(df5), size = round(0.7*nrow(df5)), replace=FALSE)
 train5 = df5[Index,]
 test5 = df5[-Index,] 
 
@@ -316,16 +309,14 @@ t(M5$coefs)%*% M5$SV
 #MODEL 6: TONY — LOGISTIC REGRESSION CLASSIFICATION WITH REGION VARIABLES
 
 #CREATING TEST/TRAINING SPILT
-set.seed(123)
 df6 <- df_dum
 names(df6)[names(df6)=="Group.1"]<-"countries"
 names(df6)[names(df6)=="rname"]<-"region"
 df6$veryhappy <- factor(df6$veryhappy)
 class(df6$veryhappy)
 
-inTrain6 <- createDataPartition(y=df6$veryhappy, p=.70, list = FALSE)
-train6<-df6[inTrain6,]  
-test6<-df6[-inTrain6,]  
+train6<-df6[Index,]
+test6<-df6[-Index,]  
 
 #MODEL BUILDING AND VALIDATION
 M6<-glm(veryhappy ~ ., data = train6[3:18], family = binomial())
