@@ -1,7 +1,7 @@
 # ASSIGNMENT NAVIGATION
 DELIVERABLE 1 - EXECUTIVE SUMMARY
 
-This deliverable is word document uploaded as "name" under 'Section 1 - Introduction'
+This deliverable is word document uploaded as "Written Part" under 'Section 1 - Introduction'
 
 DELIVERABLE 2 - TIDY DATASET
 
