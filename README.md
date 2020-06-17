@@ -1,15 +1,6 @@
 # ASSIGNMENT NAVIGATION
-DELIVERABLE 1 - EXECUTIVE SUMMARY
+HAPPINESS PROJECT - 2020
+This is a school project where I created two models, a regression and classification model.
+I use a support vectors machine for a classifications and a penalized ridge regression.
 
-This deliverable is word document uploaded as "Written Part" under 'Section 1 - Introduction'
-
-DELIVERABLE 2 - TIDY DATASET
-
-The TIDY dataset is run in the second code chunk of the r markdown - "happiness_markdown." 
-There are two datasets, 'df' and 'df_dum', one has a categorical variable for regions (df) 
-and the other has binary variables for each region (df_dum)
-
-DELIVERABLE 3 - MODELS PROPOSALS
-
-In "happiness_markdown," each model proposal and validation has one code chunk dedicated to it.
-Each chunk has the model type and group member responsible for it
+ORANGE JUICE - 2019
