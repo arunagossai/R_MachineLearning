@@ -7,8 +7,8 @@ output: html_document
   
 ```{r happiness, echo=FALSE}
 #LOADING DATA AND DOWNLOADING PACKAGES
+
 data = read.csv('https://raw.githubusercontent.com/arunagossai/happiness_project_R/master/happiness_data.csv', header = TRUE)
-head(data)
 summary(data)
 dim(data)
 library(tseries)
@@ -19,30 +19,33 @@ library(rpart)
 library(rpart.plot)
 library(e1071)
 library(caret)
-set.seed(123)
 ```
 
 
 
 ```{r happiness, echo=FALSE}
 #VARIABLE CREATION AND PREPROCESSING
-#Creating a key for the regions, will use later
+
+#Creating a key for the regions to match region names to numeric values
 regionkey = levels(data$region)
 regionvalues = c(1:10)
 key = data.frame(regionkey,regionvalues)
 #Changing the region from categorical to numeric
 data$region <- as.numeric(data$region)
+
 #Change getting rid of countries with no observations, and countries with no democracy value
 df1  = subset(data, country != "Kosovo"  & country !="Taiwan" & country!="Sudan" & democracy!= 'NA')
 paste( dim(data)[1] - dim(df1)[1], "observations lost")
-#Taking the mean of each column by country. Changes dataset from pooled cross-sectional to cross-sectional 
+
+#Taking the mean of each column by country. Changes dataset from pooled cross-sectional to cross-sectional. This is done because each country does not have the same number of observations (years). Chose the mean instead of median because of the low variance between different years for one country.
 df2 <- aggregate.data.frame(df1[-2], by = list(df1$country), mean)
 paste( dim(df1)[1] - dim(df2)[1], "observations lost")
 #adding a column for the region name
 rname = lookup(df2$region,key$regionvalues,key$regionkey)
-df = data.frame(df2,rname)
+df3 = data.frame(df2,rname)
 #Creating dummy variables from the region name
-df_dum <- dummy_cols(df, select_columns = "rname")
+df <- dummy_cols(df3, select_columns = "rname")
+
 #testing for multicollinearity excluding regions and year from matrix
 cor(df[6:15])
 #serious issues with multicollinearity, dropping the problem variables
@@ -50,143 +53,142 @@ df$men_edu <- NULL
 df$sanitation <- NULL
 df$elder_child <- NULL
 df$child_mortality <- NULL
-df_dum$men_edu <- NULL
-df_dum$sanitation <- NULL
-df_dum$elder_child <- NULL
-df_dum$child_mortality <- NULL
+
+#creating binary 'very happy' variables for classification models
+df$veryhappy <- ifelse(df$happiness >= 6.5,1,0)
+
 #dropping variables that are not needed
 df$year <- NULL
 df$ï..id <- NULL
 df$id <- NULL
 df$region <- NULL
-df_dum$year <- NULL
-df_dum$ï..id <- NULL
-df_dum$id <- NULL
-df_dum$region <- NULL
-df_dum$rname <- NULL  #getting rid of one dummy variable to prevent multicollinearity
-df_dum$rname_West_EU<-NULL
-#creating binary 'very happy' variables for classification models
-df_dum$veryhappy <- ifelse(df_dum$happiness >= 6.5,1,0)
-df$veryhappy <- ifelse(df$happiness >= 6.5,1,0)
-
-View(df_dum)
-View(df)
+df$rname <- NULL  #getting rid of one dummy variable to prevent multicollinearity
+df$rname_West_EU<-NULL
 ```
+
 
 
 
 ```{r happiness, echo=FALSE}
 #CHECKING VARIABLE RELATIONSHIPS WITH DEPENDENT VARIABLE
-df1 = df_dum
-dim(df1)
-#relationships with independent
-hist(df1$happiness)
-jarque.bera.test(df1$happiness) #happiness is not normally distributed
-plot(df1$women_edu,df1$happiness)
-plot(log(df1$women_edu),df1$happiness)#women_edu seems to fit better with log(women_edu)
-plot(df1$democracy,df1$happiness) #democracy variable seems to have a linear relationship
-plot(df1$gini,df1$happiness) 
-plot(log(df1$gini),df1$happiness) #gini seems uncorrelated to happiness
-plot(df1$gini^2,df1$happiness) #the log or squared of gini does not help the fit
-plot(df1$refugee,df1$happiness) 
-plot(df1$refugee,df1$happiness, xlim = c(0,1))
-plot(log(df1$refugee + 1),df1$happiness)
-plot(log(df1$refugee + 1),df1$happiness, xlim = c(0,1)) # refugee share does not seem to be correlated, log helps with variance
-plot(df1$pop_den,df1$happiness)
-plot(log(df1$pop_den),df1$happiness) # pop not seems uncorrelated. log noticably reduces variance
-plot(df1$labour,df1$happiness)
-plot(log(df1$labour),df1$happiness)
-plot(df1$labour,log(df1$happiness)) #labour seems uncorrelated to happiness
+
+#graphically viewing relationships between independent and dependent variables
+hist(df$happiness)
+jarque.bera.test(df$happiness) #happiness is not normally distributed
+plot(df$women_edu,df$happiness)
+plot(log(df$women_edu),df$happiness)#women_edu seems to fit better with log(women_edu)
+plot(df$democracy,df$happiness) #democracy variable seems to have a linear relationship
+plot(df$gini,df$happiness) 
+plot(log(df$gini),df$happiness) #gini seems uncorrelated to happiness
+plot(df$gini^2,df$happiness) #the log or squared of gini does not help the fit
+plot(df$refugee,df$happiness) 
+plot(df$refugee,df$happiness, xlim = c(0,1))
+plot(log(df$refugee + 1),df$happiness)
+plot(log(df$refugee + 1),df$happiness, xlim = c(0,1)) # refugee share does not seem to be correlated, log helps with variance
+plot(df$pop_den,df$happiness)
+plot(log(df$pop_den),df$happiness) # pop not seems uncorrelated. log noticably reduces variance
+plot(df$labour,df$happiness)
+plot(log(df$labour),df$happiness)
+plot(df$labour,log(df$happiness)) #labour seems uncorrelated to happiness
 ```
 
 
 
-```{r}
-#MODEL 1: LAUREN — LINEAR MODEL WITH ALL VARIABLES
 
+```{r}
 #TRANSFORMING VARIABLES AND CREATING TEST AND TRAINING SET
-df1 = df_dum
+
+#transformations
+df1 = df
 df1$refugee <- log(df1$refugee+1)
 df1$women_edu <- log(df1$women_edu)
 df1$pop_den <- log(df1$pop_den)
 
-set.seed(123)
-Index = sample(1:nrow(df1), size = round(0.7*nrow(df1)), replace=FALSE)
-train1 = df1[Index,]
-test1 = df1[-Index,]  
-
-#MODEL 1 BUILDING AND VALIDATION
-M1 = lm(happiness ~ ., train1[2:17])
-
-pred_in_1 = predict(M1, train1[3:17])
-pred_out_1 = predict(M1, test1[3:17])
-
-RMSE_IN_1 = sqrt(sum((pred_in_1-train1$happiness)^2)/length(pred_in_1))
-RMSE_OUT_1 = sqrt(sum((pred_out_1-test1$happiness)^2)/length(pred_out_1))
-
-c(RMSE_IN_1,RMSE_OUT_1)
-summary(M1)
-cbind(M1$coefficient,confint(M1))
-
-#RESIDUAL ANALYSIS
-plot(M1$residuals)
-abline(0,0,col='black')
-summary(M1$residuals)
-jarque.bera.test(M1$residuals) 
+#test/training split
+Index = sample(1:nrow(df), size = round(0.7*nrow(df)), replace=FALSE)
+train = df1[Index,]
+test = df1[-Index,]
 ```
 
 
 
 
 ```{r}
-#MODEL 2: ARUNA — RIDGE REGRESSION WITH A 5 FOLD CROSS VALIDATION
+#MODEL 1: BASE FOR MODEL COMPARISION: REGRESSION
 
-#TRANSFORMING VARIABLES AND CREATING TEST AND TRAINING SET
-df2 = df_dum
-df2$refugee <- log(df2$refugee+1)
-df2$women_edu <- log(df2$women_edu)
-df2$pop_den <- log(df2$pop_den)
+#Building linear model including all the variables in transformed dataset
+M1 = lm(happiness ~ ., train[2:17])
 
-train2 = df2[Index,]
-test2 = df2[-Index,]  
+pred_in_1 = predict(M1, train[3:17])
+pred_out_1 = predict(M1, test[3:17])
 
-#MODEL 2 SELECTION - DECIDING BETWEEN RIDGE, LASSO AND BLENDED PENALTIES
+#Model validation using root mean squared error
+RMSE_IN_1 = sqrt(sum((pred_in_1-train$happiness)^2)/length(pred_in_1))
+RMSE_OUT_1 = sqrt(sum((pred_out_1-test$happiness)^2)/length(pred_out_1))
+
+c(RMSE_IN_1,RMSE_OUT_1)
+```
+
+
+
+
+```{r}
+#MODEL 2: PENALIZED REGRESSION WITH A 5 FOLD CROSS VALIDATION
+
+#model selection - using RMSE to decide between ridge, lasso, and blended penalties 
 results <- c()
 alpha = c(0,.25,.5,.75,1)
 for(i in 1:5){
-  M2 = cv.glmnet(as.matrix(train2[3:17]),train2$happiness, alpha = alpha[i], nfolds = 5)
+  M2 = cv.glmnet(as.matrix(train[3:17]),train$happiness, alpha = alpha[i], nfolds = 5)
   
-  pred_in_2 = predict(M2, as.matrix(train2[3:17]), s = 'lambda.min')
-  pred_out_2 = predict(M2, as.matrix(test2[3:17]), s = 'lambda.min')
+  pred_in_2 = predict(M2, as.matrix(train[3:17]), s = 'lambda.min')
+  pred_out_2 = predict(M2, as.matrix(test[3:17]), s = 'lambda.min')
   
-  RMSE_IN_2 = sqrt(sum((pred_in_2-train2$happiness)^2)/length(pred_in_2))
-  RMSE_OUT_2 = sqrt(sum((pred_out_2-test2$happiness)^2)/length(pred_out_2))
+  RMSE_IN_2 = sqrt(sum((pred_in_2-train$happiness)^2)/length(pred_in_2))
+  RMSE_OUT_2 = sqrt(sum((pred_out_2-test$happiness)^2)/length(pred_out_2))
   
   results <- rbind(results,c(alpha[i],RMSE_IN_2,RMSE_OUT_2,M2$lambda.min))
   colnames(results)<-c("Alpha","RMSE_IN","RMSE_OUT","Lambda")
 }
 results
+
+#finding the penalty term that produced the smallest RMSE
 MIN_ERROR = results[which(results[,3] == min(results[,3])),]
 MIN_ERROR
 
-#MODEL 2 BUILDING AND VALIDATION - RIDGE PENALTY
-M2 = cv.glmnet(as.matrix(train2[3:17]),train2$happiness, alpha = MIN_ERROR[1], nfolds = 5)
+#building regression with penalty term corresponding to lowest RMSE
+M2 = cv.glmnet(as.matrix(train[3:17]),train$happiness, alpha = MIN_ERROR[1], nfolds = 5)
 
-pred_in_2 = predict(M2, as.matrix(train2[3:17]), s = 'lambda.min')
-pred_out_2 = predict(M2, as.matrix(test2[3:17]), s = 'lambda.min')
+pred_in_2 = predict(M2, as.matrix(train[3:17]), s = 'lambda.min')
+pred_out_2 = predict(M2, as.matrix(test[3:17]), s = 'lambda.min')
 
-RMSE_IN_2 = sqrt(sum((pred_in_2-train2$happiness)^2)/length(pred_in_2))
-RMSE_OUT_2 = sqrt(sum((pred_out_2-test2$happiness)^2)/length(pred_out_2))
+RMSE_IN_2 = sqrt(sum((pred_in_2-train$happiness)^2)/length(pred_in_2))
+RMSE_OUT_2 = sqrt(sum((pred_out_2-test$happiness)^2)/length(pred_out_2))
 
 R2 <- M2$glmnet.fit$dev.ratio[which(M2$glmnet.fit$lambda == M2$lambda.min)]
-c(RMSE_IN_2,RMSE_OUT_2,R2)
-cbind(coef(M2, s = 'lambda.min'))
+#the lower the number the better for RMSE
+data.frame( data = c(RMSE_OUT_1,RMSE_OUT_2,RMSE_IN_2,R2), row.names = c("RMSE Out Base","Penalty RMSE Out","Penalty RMSE In","Penalty R-Squared"))
 
-#RESIDUAL ANALYSIS
-plot(pred_out_2-test2$happiness)
-abline(0,0,col='black')
-summary(pred_out_2-test2$happiness)
-jarque.bera.test(pred_out_2-test2$happiness) #null: normally distributed
+#cbind(coef(M2, s = 'lambda.min')) #coefficients of variables
+
+```
+
+
+
+
+```{r}
+#MODEL 3: BASE MODEL FOR COMPARISON: CLASSIFICATION
+
+#building basic logistic regression model with all variables 
+M3<-glm(veryhappy ~ ., data = train[3:18], family = binomial())
+
+CONFUSION_IN_3 = confusionMatrix(table(predict(M3, train, type="response")
+                                       >= 0.5,train$veryhappy == 1))
+CONFUSION_OUT_3 = confusionMatrix(table(predict(M3, test, type="response")
+                                        >= 0.5,test$veryhappy == 1))
+CONFUSION_IN_3$table
+CONFUSION_OUT_3$table
+c(CONFUSION_OUT_3$overall[1])
 ```
 
 
@@ -194,142 +196,59 @@ jarque.bera.test(pred_out_2-test2$happiness) #null: normally distributed
 
 
 ```{r}
-#MODEL 3: YIFAN — LINEAR REGRESSION
+#MODEL 4: SUPPORT VECTOR MACHINE CLASSIFICATION WITH 5 FOLD CROSS-VALIDATION
 
-#CREATING TRAINING AND TEST SET
-train3 = df_dum[Index,]
-test3 = df_dum[-Index,]  
-
-#MODEL 3 BUILDING AND VALIDATION
-M3 = lm(happiness ~ democracy + refugee + women_edu + pop_den + labour, train3[2:17])
-
-pred_in_3 = predict(M3, train3[2:17])
-pred_out_3 = predict(M3, test3[2:17])
-
-RMSE_IN_3 = sqrt(sum((pred_in_3-train3$happiness)^2)/length(pred_in_3))
-RMSE_OUT_3 = sqrt(sum((pred_out_3-test3$happiness)^2)/length(pred_out_3))
-
-c(RMSE_IN_3,RMSE_OUT_3)
-summary(M3)
-cbind(M3$coefficients,confint(M3))
-
-#RESIDUAL ANALYSIS
-par(mfrow=c(2,2))
-plot(M3)
-```
-
-
-
-
-
-```{r}
-#MODEL 4: ERNESTO - LOGISTIC CLASSIFICATION
-
-#VARIABLE TRANSFORMATION AND TEST/TRAINING SPLIT
-df4 <- df
-names(df4)[names(df4)=="Group.1"]<-"countries"
-names(df4)[names(df4)=="rname"]<-"region"
-#transforms veryhappy into a factor (categorical) variable
-df4$veryhappy <- factor(df4$veryhappy)
-class(df4$veryhappy)
-
-train4<-df4[Index,]
-test4<-df4[-Index,]
-
-#MODEL BUILDING AND VALIDATION
-M4<-glm(veryhappy ~ democracy + gini + refugee + women_edu + pop_den + labour, data = train4, family = "binomial")
-
-CONFUSION_IN_4 = confusionMatrix(table(predict(M4, train4, type="response") 
-                                     >= 0.5, train4$veryhappy == 1))
-CONFUSION_OUT_4 = confusionMatrix(table(predict(M4, test4, type="response")
-                                     >= 0.5, test4$veryhappy == 1))
-
-CONFUSION_IN_4
-CONFUSION_OUT_4
-summary(M4)
-cbind(M4$coefficients,confint(M4))
-exp(cbind(M4$coefficients, confint(M4)))
-```
-
-
-
-
-```{r}
-#MODEL 5: CONRAD — SUPPORT VECTOR MACHINE CLASSIFICATION
-
-#VARIABLE TRANSFORMATION AND TEST/TRAINING SPLIT
-df5 = df_dum
-df5$refugee <- log(df5$refugee+1)
-df5$pop_den <- log(df5$pop_den)
-
-train5 = df5[Index,]
-test5 = df5[-Index,] 
-
-#MODEL SELECTION - TESTING DIFFERENT LEVELS OF GAMMA
+#model selection - using accuracy to determine the level of gamma
 SVM_results = c()
 gamma = c(.5,.1,.05,.01,.005)
 for (i in 1:5){
-  SVM<-svm(veryhappy~ ., data = train5[3:18], kernel = "radial", gamma = gamma[i], type="C-classification", cross = 5)
+  SVM<-svm(veryhappy~ ., data = train[3:18], kernel = "radial", gamma = gamma[i], type="C-classification", cross = 5)
  
-  SVM_IN =  predict(SVM, train5)
-  SVM_OUT =  predict(SVM, test5)
+  SVM_IN =  predict(SVM, train)
+  SVM_OUT =  predict(SVM, test)
  
-  confusion_IN_5 = table(SVM_IN,train5$veryhappy)
-  confusion_OUT_5 = table(SVM_OUT,test5$veryhappy)
+  confusion_IN_4 = table(SVM_IN,train$veryhappy)
+  confusion_OUT_4 = table(SVM_OUT,test$veryhappy)
  
-  Accuracy_IN_5 = (confusion_IN_5[1,1]+confusion_IN_5[2,2])/length(SVM_IN)
-  Accuracy_OUT_5 = (confusion_OUT_5[1,1]+confusion_OUT_5[2,2])/length(SVM_OUT)
+  Accuracy_IN_4 = (confusion_IN_4[1,1]+confusion_IN_4[2,2])/length(SVM_IN)
+  Accuracy_OUT_4 = (confusion_OUT_4[1,1]+confusion_OUT_4[2,2])/length(SVM_OUT)
  
-  SVM_results <- rbind(SVM_results,c(gamma[i],Accuracy_IN_5,Accuracy_OUT_5))
+  SVM_results <- rbind(SVM_results,c(gamma[i],Accuracy_IN_4,Accuracy_OUT_4))
   colnames(SVM_results)<-c("Gamma","Accuracy In","Accuracy Out")
 }
 SVM_results
 MAX_ACC = SVM_results[which(SVM_results[,3] == max(SVM_results[,3])),]
 MAX_ACC
  
-#MODEL 5 BUILDING AND VALIDATION
-M5<-svm(veryhappy~ ., data = train5[3:18], kernel = "radial", gamma = MAX_ACC[1], type="C-classification")
+#building model using the value of gamma that produced the highest accuracy
+M4<-svm(veryhappy~ ., data = train[3:18], kernel = "radial", gamma = MAX_ACC[1], type="C-classification")
 
-pred_in_5 =  predict(M5, train5)
-pred_out_5 = predict(M5, test5)
+pred_in_4 =  predict(M4, train)
+pred_out_4 = predict(M4, test)
 
-CONFUSION_IN_5 = confusionMatrix(table(pred_in_5,train5$veryhappy))
-CONFUSION_OUT_5 = confusionMatrix(table(pred_out_5,test5$veryhappy))
+CONFUSION_IN_4 = confusionMatrix(table(pred_in_4,train$veryhappy))
+CONFUSION_OUT_4 = confusionMatrix(table(pred_out_4,test$veryhappy))
 
-CONFUSION_IN_5
-CONFUSION_OUT_5
-t(M5$coefs)%*% M5$SV
+#creating final table to compare base model to SVM
+{
+  titles = c("Accuracy","Sensitivity","Precision","Recall")
+  SVM_Stats = c(CONFUSION_OUT_4$overall[1],CONFUSION_OUT_4$byClass[1],CONFUSION_OUT_4$byClass[5],CONFUSION_OUT_4$byClass[6])
+  Base_Stats = c(CONFUSION_OUT_3$overall[1],CONFUSION_OUT_3$byClass[1],CONFUSION_OUT_3$byClass[5],CONFUSION_OUT_3$byClass[6])
+  } 
+
+final = data.frame(c(data.frame(Base_Stats),data.frame(SVM_Stats)), row.names = titles)
+colnames(final) <- c("BASE","SVM")
+final
+#t(M5$coefs)%*% M5$SV #code to get the coefficients
 ```
-
-
-
 
 
 ```{r}
-#MODEL 6: TONY — LOGISTIC REGRESSION CLASSIFICATION WITH REGION VARIABLES
+#RESIDUAL ANALYSIS OF MODEL 2 (PENALIZED REGRESSION)
 
-#CREATING TEST/TRAINING SPILT
-df6 <- df_dum
-names(df6)[names(df6)=="Group.1"]<-"countries"
-names(df6)[names(df6)=="rname"]<-"region"
-df6$veryhappy <- factor(df6$veryhappy)
-class(df6$veryhappy)
-
-train6<-df6[Index,]
-test6<-df6[-Index,]  
-
-#MODEL BUILDING AND VALIDATION
-M6<-glm(veryhappy ~ ., data = train6[3:18], family = binomial())
-
-CONFUSION_IN_6 = confusionMatrix(table(predict(M6, train6, type="response")
-                                       >= 0.5,train6$veryhappy == 1))
-CONFUSION_OUT_6 = confusionMatrix(table(predict(M6, test6, type="response")
-                                        >= 0.5,test6$veryhappy == 1))
-CONFUSION_IN_6
-CONFUSION_OUT_6
-summary(M6)
-cbind(M6$coefficients,confint(M6))
-exp(cbind(M6$coefficients, confint(M6)))
+plot(pred_out_2-test$happiness) 
+abline(0,0,col='black') #residuals appear to be randomly dispersed
+summary(pred_out_2-test$happiness) #mean and median are close to 0
+jarque.bera.test(pred_out_2-test$happiness) #null: normally distributed
 ```
-
 
