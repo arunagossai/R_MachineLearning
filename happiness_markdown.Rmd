@@ -167,7 +167,8 @@ RMSE_OUT_2 = sqrt(sum((pred_out_2-test$happiness)^2)/length(pred_out_2))
 
 R2 <- M2$glmnet.fit$dev.ratio[which(M2$glmnet.fit$lambda == M2$lambda.min)]
 #the lower the number the better for RMSE
-data.frame( data = c(RMSE_OUT_1,RMSE_OUT_2,RMSE_IN_2,R2), row.names = c("RMSE Out Base","Penalty RMSE Out","Penalty RMSE In","Penalty R-Squared"))
+rownames = c("RMSE Out Base","Penalty RMSE Out","Penalty RMSE In","Penalty R-Squared")
+data.frame( data = c(RMSE_OUT_1,RMSE_OUT_2,RMSE_IN_2,R2), row.names = rownames)
 
 #cbind(coef(M2, s = 'lambda.min')) #coefficients of variables
 
