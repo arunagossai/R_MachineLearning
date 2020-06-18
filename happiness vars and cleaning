@@ -24,7 +24,7 @@ Data Cleaning:
 1. Transformed region names to numeric values to get all numeric variables
 2. Aggregated the dataset by country using the mean. This dataset is pooled, meaning not every country has data for each
    point in time. In order for each country to have equal weight, the dataset is averaged by country.
-3. Removed countries that have no data for independent variables
+3. Removed countries that do not have data for independent variables
 4. Removed countries that do not have a democracy score
 5. Replaced the numeric region values with names and created dummy variables for each region.
 6. Dropped variables due to multicollinearity
